@@ -1,76 +1,61 @@
-#include <iostream>
-#include <vector>
 #include <fstream>
+#include <iostream>
+#include <string>
+#include <ranges>
+#include <vector>
 
-
-bool read_file(std::vector<std::string>& output, const std::string& input) {
+bool read_file(std::string& output, const std::string& input) {
     std::ifstream file {input};
     if (!file) {
         return false;
     }
     std::string temp {};
     while (std::getline(file, temp)) {
-        output.push_back(temp);
+        output += temp;
     }
     return true;
 }
-
-int execute_command(int value, std::string_view command, int& zerocount) {
-    if (command.size() < 2) {
-        return -1;
-    }
-    if ((command[0] != 'L' && command[0] != 'R')) {
-        return -2;
-    }
-    if (value < 0 || value > 99) {
-        return -3;
-    }
-    int command_value;
-    char command_dir = command[0];
-    try {
-        command_value = std::stoi(std::string(command.substr(1)));
-    } catch (std::exception&) {
-        return -4;
-    }
-    zerocount += command_value/100;
-    command_value %= 100;
-    if (command_value == 0) {
-        return value;
-    }
-    if (command_dir == 'L') {
-        value -= command_value;
-        if (value == 0 || (value < 0 && value + command_value != 0/*needed so we dont count it twice if alr 0*/)) {
-            zerocount++;
+std::vector<unsigned long long> extract_ids(std::string_view input) {
+    std::vector<unsigned long long> ids = {};
+    std::vector<unsigned long long> part_ids = {};
+    for (const auto& str : std::views::split(input, ',')) {
+        part_ids.clear();
+        for (const auto& str1 : std::views::split(std::string_view(str), '-')) {
+            part_ids.emplace_back(std::stoll(std::string(std::string_view(str1))));
         }
-        if (value < 0) {
-            value = 100 + value;
+        if (part_ids[0] > part_ids[1]) {
+            const auto temp = part_ids[0];
+            part_ids[0] = part_ids[1];
+            part_ids[1] = temp;
         }
-
-    } else if (command_dir == 'R') {
-        value += command_value;
-        if (value >= 100) {
-            value %= 100;
-            zerocount++;
+        for (unsigned long long i = part_ids[0]; i <= part_ids[1]; ++i) {
+            ids.emplace_back(i);
         }
     }
-    return value;
+    return ids;
 }
-
 int main() {
     // TIP Press <shortcut actionId="RenameElement"/> when your caret is at the <b>lang</b> variable name to see how CLion can help you rename it.
-    std::vector<std::string> rotations = {};
-    bool success = read_file(rotations, "rots.txt");
-    if (!success) {
-        return -1;
+    std::string ids_str;
+    read_file(ids_str, "ids.txt");
+    const std::vector<unsigned long long> ids = extract_ids(ids_str);
+    unsigned long long sum = 0;
+    for (const auto id : ids) {
+        std::string id_str = std::to_string(id);
+        for (unsigned long long i = 0; i <= id_str.size()/2; ++i) {
+            std::string separating_string = id_str.substr(0, i);
+            auto split = std::views::split(std::string_view(id_str), separating_string);
+            bool shallAdd = true;
+            for (auto c: split) {
+                shallAdd &= (std::string_view(c).empty());
+            }
+            if (shallAdd) {
+                sum += id;
+                break;
+            }
+        }
     }
-    int value = 50;
-    int zerocount = 0;
-    for (const auto& rot : rotations) {
-        value = execute_command(value, rot, zerocount);
-        //std::cout<<rot<<"\n"<<value<<"\n"<<zerocount<<"\n";
-    }
-    std::cout<<zerocount;
-
+    std::cout<<sum;
     return 0;
     // TIP See CLion help at <a href="https://www.jetbrains.com/help/clion/">jetbrains.com/help/clion/</a>. Also, you can try interactive lessons for CLion by selecting 'Help | Learn IDE Features' from the main menu.
 }
